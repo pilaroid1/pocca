@@ -7,14 +7,20 @@ import socket
 class System():
     def __init__(self):
         if os.geteuid() == 0:
-            self.name = socket.gethostname()
+            self.info = {}
+            self.info["name"] = socket.gethostname()
             ip = subprocess.check_output(["hostname", "-I"])
             ip = ip.decode()
             ip = ip.split(" ")[0]
-            self.ip = ip
+            self.info["ip"] = ip
+            devmode = subprocess.check_output(["/usr/local/bin/isdev"])
+            self.info["devmode"] = bool(devmode.decode().strip())
+            print(self.info)
         else:
             raise Exception("Need Root Permissions, try using sudo")
 
+    def get(self):
+        return self.info
     # https://stackoverflow.com/questions/19813376/change-an-user-password-on-samba-with-python
     def update_samba_user(self, username, password):
         proc = subprocess.Popen(['smbpasswd', '-a', username], stdin=subprocess.PIPE)
@@ -32,6 +38,6 @@ class System():
         print(child.stdout.read().decode())
 
     def change_name(self, name):
-        os.system("hostname " + name)
+        os.system("hostname " + self.info.name)
         os.system("systemctl restart avahi-daemon")
         os.system("systemctl restart nmbd")
