@@ -42,8 +42,6 @@ class System():
 
         for dir in os.listdir("/media/usb/apps/"):
             self.info["apps"].append(dir)
-        for dir_in_use in self.info["apps_in_use"]:
-            self.info["apps"].remove(dir_in_use)
 
     def getScreen(self):
         self.info["screen"] = None
