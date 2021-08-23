@@ -142,4 +142,3 @@ class System():
 
         os.system("hostname " + name)
         os.system("systemctl restart avahi-daemon")
-        os.system("systemctl restart nmbd")
