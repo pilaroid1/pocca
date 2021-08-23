@@ -11,18 +11,22 @@ class System():
         if os.geteuid() == 0:
             self.info = {}
             self.supervisor_file = supervisor_file
-            self.update = update
+            self.refresh = update
             self.getSupervisorSettings()
-            if(self.update):
-                self.getHostname()
-                self.getIP()
-                self.getSSID()
-                self.getWiFi()
-                self.getInternet()
-                self.getDevMode()
-                self.getApps()
+            if(self.refresh):
+                self.update()
         else:
             raise Exception("Need Root Permissions, try using sudo")
+
+    def update(self):
+        self.getHostname()
+        self.getIP()
+        self.getSSID()
+        self.getWiFi()
+        self.getInternet()
+        self.getDevMode()
+        self.getApps()
+        self.getScreen()
 
     def getSupervisorSettings(self):
         self.supervisor = configparser.ConfigParser()
@@ -41,6 +45,17 @@ class System():
         for dir_in_use in self.info["apps_in_use"]:
             self.info["apps"].remove(dir_in_use)
 
+    def getScreen(self):
+        self.info["screen"] = None
+        self.info["screen_resolution"] = (320,240)
+        f = open("/boot/config.txt", "r")
+        lines = f.readlines()
+        for line in lines:
+            if "dtoverlay" in line and "#dtoverlay" not in line and "fps" in line:
+                self.info["screen"] = line.strip().split("dtoverlay=")[1].split(",")[0]
+        if self.info["screen"] == "pitft22":
+            self.info["screen_resolution"] = (320,240)
+
     def getDevMode(self):
         devmode = subprocess.check_output(["/media/usb/apps/pocca/utils/isdev.sh"])
         self.info["devmode"] = bool(devmode.decode().strip())
@@ -53,10 +68,15 @@ class System():
         ip = ip.decode()
         ip = ip.split(" ")[0]
         self.info["ip"] = ip
+        return ip
 
     def getSSID(self):
-        ssid = subprocess.check_output(["iwgetid", "-r"])
-        self.info["ssid"] = ssid.decode().strip()
+        try:
+            ssid = subprocess.check_output(["iwgetid", "-r"])
+            self.info["ssid"] = ssid.decode().strip()
+        except:
+            print("Wifi is disconnected")
+            self.info["ssid"] = ""
 
     def getWiFi(self):
         wifi_state = subprocess.check_output(["/media/usb/apps/pocca/utils/checkwifi.sh"])
@@ -91,7 +111,37 @@ class System():
         child = subprocess.Popen(["wpa_supplicant", "-B", "-i","wlan0", "-c","/etc/wpa_supplicant/wpa_supplicant.conf"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         print(child.stdout.read().decode())
 
+    def change_app(self, app_name):
+        # If app_name.py file exists
+        if os.path.isfile("/media/usb/apps/" + app_name + "/" + app_name + ".py"):
+            # change application in supervisor
+            self.supervisor["program:app"]["command"] = "python " + app_name + ".py"
+            self.supervisor["program:app"]["directory"] = "/media/usb/apps/" + app_name
+            with open(self.supervisor_file, 'w') as configfile:
+                self.supervisor.write(configfile)
+            os.system("sudo supervisorctl update")
+            os.system("sudo supervisorctl stop webapi")
+            os.system("sudo supervisorctl start webapi")
+
     def change_name(self, name):
-        os.system("hostname " + self.info.name)
+        f = open("/etc/hostname", "w")
+        f.write(name)
+        f.close()
+        # Change name in /etc/hosts
+        f = open("/etc/hosts", "r")
+        lines = f.readlines()
+        i = 0
+        for line in lines:
+            # If line contains 127.0.1.1
+            if "127.0.1.1" in line:
+                # Split line in two string
+                lines[i] = "127.0.1.1   " + name + "\n"
+            i += 1
+        # Save lines in /etc/hosts
+        f = open("/etc/hosts", "w")
+        f.writelines(lines)
+        f.close()
+
+        os.system("hostname " + name)
         os.system("systemctl restart avahi-daemon")
         os.system("systemctl restart nmbd")

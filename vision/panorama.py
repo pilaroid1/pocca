@@ -32,16 +32,17 @@ class Panorama():
     def join_images(self, filename_images, stitched_name = "stitched.png"):
         images = []
         for image in filename_images:
-            images.append(cv2.imread(self.path_temp + "/" + image))
+            images.append(cv2.imread(self.path_temp + "/images/" + image))
         # Create Stitcher Objects
         stitcher = cv2.Stitcher_create()
+        #stitcher.setPanoConfidenceThresh(0.1)
         # Apply Stitcher Algorithm to images
         (self.status, self.stitched) = stitcher.stitch(images)
 
         # Generate Borders
         self.stitched = cv2.copyMakeBorder(self.stitched, 10, 10, 10, 10, cv2.BORDER_CONSTANT, (0, 0, 0))
         #cv2.imwrite(self.path_temp + stitched_name, self.stitched)
-
+        print(self.status)
     """
     Manual Cropper
     """

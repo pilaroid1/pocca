@@ -4,7 +4,6 @@ Author : µsini
 Audio Manager
 """
 
-import pygame
 import os
 
 class Sounds():
