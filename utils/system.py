@@ -60,6 +60,7 @@ class System():
 
     def getHostname(self):
         self.info["hostname"] = socket.gethostname()
+        return self.info["hostname"]
 
     def getIP(self):
         ip = subprocess.check_output(["hostname", "-I"])
